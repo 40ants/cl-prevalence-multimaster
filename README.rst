@@ -40,10 +40,15 @@ How does this work
    * and executes transaction from each found log;
    * removes himself logs, processed by all other masters.
 
+   .. warning:: Right now ``sync-with-other-masters`` should be called
+                not often then once per second, because otherwise filenames
+                of transaction log backups will clash.
+
 Roadmap
 =======
 
 1. Ensure this will work on the real world application.
+2. Support old transaction logs deletion after they was processed by all apps.
 2. Add a documentation.
 3. ...
 
