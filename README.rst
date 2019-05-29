@@ -40,18 +40,12 @@ How does this work
    * and executes transaction from each found log;
    * removes himself logs, processed by all other masters.
 
-.. code-block:: common-lisp
-
-   (defvar log-item '(:|@message| "Some"
-                      :|@timestamp| 122434342
-                      ;; this field is wrong and
-                      ;; shouldn't be here
-                      :|@fields| nil))
-
 Roadmap
 =======
 
-Provide a Roadmap.
+1. Ensure this will work on the real world application.
+2. Add a documentation.
+3. ...
 
 .. Everything after this comment will be omitted from HTML docs.
 .. include-to
