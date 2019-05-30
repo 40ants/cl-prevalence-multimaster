@@ -3,6 +3,12 @@ sphinx
 pygments-cl-repl
 sphinx-bootstrap-theme
 
+# Jinja before this version is vulnerable: CVE-2019-10906
+Jinja2>=2.10.1
+
+# CVE-2018-18074
+requests>=2.20.0
+
 # to support docstring extraction and cross-referencing
 -e git+git@github.com:russell/sphinxcontrib-cldomain.git#egg=sphinxcontrib-cldomain
 
