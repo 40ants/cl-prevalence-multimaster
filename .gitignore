@@ -1,2 +1,6 @@
 /docs/build/
 /env/
+/qlfile
+/qlfile.lock
+/quicklisp/
+/test-m2m/

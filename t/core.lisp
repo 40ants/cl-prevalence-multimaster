@@ -16,7 +16,7 @@
 
 (deftest test-sync-of-two-systems
   (testing "Checking if lines will appear in both systems after two syncs."
-    (osicat:delete-directory-and-files "test-m2m")
+    (osicat:delete-directory-and-files "test-m2m" :if-does-not-exist :ignore)
     (let ((store-a (make-system "test-m2m" "a"))
           (store-b (make-system "test-m2m" "b")))
       (add-line store-a "A1")
@@ -41,7 +41,7 @@
 
 (deftest test-new-system-pickup-data-from-old-one
   (testing "Checking if a fresh system will load data from some other master."
-    (osicat:delete-directory-and-files "test-m2m")
+    (osicat:delete-directory-and-files "test-m2m" :if-does-not-exist :ignore)
     (let ((store-a (make-system "test-m2m" "a")))
       (add-line store-a "A1")
       (add-line store-a "A2")

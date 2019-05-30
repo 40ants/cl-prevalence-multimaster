@@ -11,8 +11,7 @@
                 #:get-directory
                 #:guarded-prevalence-system)
   (:import-from #:cl-fad
-                #:walk-directory)
-  (:import-from #:fad
+                #:walk-directory
                 #:list-directory)
   (:import-from #:prevalence-multimaster/utils
                 #:path-to-string
