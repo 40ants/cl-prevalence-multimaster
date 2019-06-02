@@ -1,7 +1,5 @@
 (defpackage #:prevalence-multimaster/system
   (:use #:cl)
-  (:import-from #:osicat
-                #:absolute-pathname)
   (:import-from #:uiop
                 #:merge-pathnames*
                 #:ensure-directory-pathname)
@@ -49,7 +47,7 @@
                             string))
   (check-type name string)
   
-  (let* ((root-path (absolute-pathname
+  (let* ((root-path (truenamize
                      (ensure-directory-pathname root-path)))
          (full-path (ensure-directory-pathname
                      (merge-pathnames* root-path

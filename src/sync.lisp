@@ -1,7 +1,5 @@
 (defpackage #:prevalence-multimaster/sync
   (:use #:cl)
-  (:import-from #:osicat
-                #:absolute-pathname)
   (:import-from #:cl-fad
                 #:pathname-parent-directory)
   (:import-from #:cl-prevalence
@@ -28,7 +26,7 @@
 
 (defun discover-logs (system)
   "Searches files with transaction logs of other masters."
-  (let* ((system-dir (absolute-pathname (get-directory system)))
+  (let* ((system-dir (truenamize (get-directory system)))
          (root-dir (pathname-parent-directory system-dir)))
     (with-accumulator (collect :list)
       (flet ((is-transaction-log (path)
