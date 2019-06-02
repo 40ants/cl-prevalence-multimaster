@@ -2,6 +2,8 @@
   (:use #:cl)
   (:import-from #:cl-fad
                 #:pathname-parent-directory)
+  (:import-from #:uiop
+                #:truenamize)
   (:import-from #:cl-prevalence
                 #:get-directory)
   (:import-from #:general-accumulator

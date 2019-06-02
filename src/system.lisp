@@ -2,6 +2,7 @@
   (:use #:cl)
   (:import-from #:uiop
                 #:merge-pathnames*
+                #:truenamize
                 #:ensure-directory-pathname)
   (:import-from #:cl-prevalence
                 #:timetag
