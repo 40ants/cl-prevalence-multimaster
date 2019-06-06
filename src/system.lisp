@@ -1,9 +1,12 @@
 (defpackage #:prevalence-multimaster/system
   (:use #:cl)
+  (:import-from #:cl-ppcre
+                #:scan)
   (:import-from #:uiop
                 #:merge-pathnames*
                 #:truenamize
                 #:ensure-directory-pathname)
+  (:import-from #:log4cl)
   (:import-from #:cl-prevalence
                 #:timetag
                 #:copy-file
@@ -23,7 +26,13 @@
    #:reset
    #:mark-log-as-applied
    #:log-applied-p
-   #:get-applied-logs))
+   #:get-applied-logs
+   #:get-name
+   #:get-log-suffix
+   #:is-transaction-log
+   #:is-my-file
+   #:get-root-path
+   #:get-all-applied-logs))
 (in-package prevalence-multimaster/system)
 
 
@@ -43,7 +52,7 @@
          :reader get-name)))
 
 
-(defun make-system (root-path name)
+(defun make-system (root-path name &key (class 'multimaster-system))
   (check-type root-path (or pathname
                             string))
   (check-type name string)
@@ -53,25 +62,56 @@
          (full-path (ensure-directory-pathname
                      (merge-pathnames* root-path
                                        name))))
-    (make-instance 'multimaster-system
+    (make-instance class
                    :directory full-path
                    :root-path root-path
                    :name name)))
 
 
-(defun mark-log-as-applied (path &key (system *system*))
+(defgeneric get-log-suffix (system)
+  (:documentation "Returns a string to be used as a part of snapshot's or transaction log's filename.
+                   Usually, this is a string with current time, but for unittests this could be
+                   sequential id.")
+  (:method ((system multimaster-system))
+    (timetag)))
+
+
+(defgeneric is-transaction-log (system path)
+  (:documentation "Returns true, if path is a transaction log for this type of system.
+                   For current transaction log (usually it is transaction.xml) it should
+                   return nil.")
+  (:method ((system multimaster-system) path)
+    (declare (ignorable system))
+    (let ((name (pathname-name path)))
+      (scan "^transaction-log-\\d{8}T\\d{6}$"
+            name))))
+
+
+(defgeneric is-my-file (system path)
+  (:documentation "Returns true, if path is under a system's database path.")
+  (:method ((system multimaster-system) path)
+    (let ((system-dir (truenamize (get-directory system))))
+      (equal (pathname-directory system-dir)
+             (pathname-directory path)))))
+
+
+(defun mark-log-as-applied (system-name path &key (system *system*))
   (check-type system multimaster-system)
-  (check-type path pathname)
+  (check-type path (or pathname string))
   (let* ((hash (cl-prevalence:get-root-object system :applied-logs))
          (root-path (get-root-path system))
          (path (path-to-string (relative-path root-path path))))
-    (pushnew path (gethash (get-name system) hash)
+    (pushnew path (gethash system-name hash)
              :test 'equal)))
 
 
-(defun get-applied-logs (&key (system *system*))
+(defun get-all-applied-logs (&key (system *system*))
   (check-type system multimaster-system)
-  (let ((hash (cl-prevalence:get-root-object system :applied-logs)))
+  (cl-prevalence:get-root-object system :applied-logs))
+
+
+(defun get-applied-logs (&key (system *system*))
+  (let ((hash (get-all-applied-logs system)))
     (gethash (get-name system) hash)))
 
 
@@ -85,39 +125,6 @@
     (member path
             (gethash (get-name system) hash)
             :test 'equal)))
-
-
-;; TODO: REMOVE THIS METHOD
-(defmethod cl-prevalence::get-transaction-log-filename :around ((system multimaster-system) &optional suffix)
-  "Keep track transaction log versions produced by the system, to prevent repetitive loading of them by other masters during their initializations."
-  (call-next-method))
-
-
-(defmethod cl-prevalence:snapshot ((system multimaster-system))
-  "Write to whole system to persistent storage resetting the transaction log"
-  (let ((timetag (timetag))
-	(transaction-log (cl-prevalence::get-transaction-log system))
-	(snapshot (cl-prevalence::get-snapshot system)))
-    (cl-prevalence:close-open-streams system)
-    
-    (when (probe-file snapshot)
-      (copy-file snapshot (merge-pathnames (make-pathname :name (cl-prevalence::get-snapshot-filename system timetag)
-                                                          :type (cl-prevalence::get-file-extension system))
-                                           snapshot)))
-    
-    (when (probe-file transaction-log)
-      (let ((new-log-filename (merge-pathnames (make-pathname :name (cl-prevalence::get-transaction-log-filename system timetag)
-                                                              :type (cl-prevalence::get-file-extension system))
-                                               transaction-log)))
-        (when timetag
-          (mark-log-as-applied new-log-filename :system system))
-      
-        (copy-file transaction-log new-log-filename))
-      (delete-file transaction-log))
-    
-    (with-open-file (out snapshot
-			 :direction :output :if-does-not-exist :create :if-exists :supersede)
-      (funcall (cl-prevalence::get-serializer system) (cl-prevalence::get-root-objects system) out (cl-prevalence::get-serialization-state system)))))
 
 
 (defun clone-other-master (system path-to-snapshot)
@@ -154,14 +161,17 @@
 
 (defmethod initialize-instance :after ((system multimaster-system) &rest args)
   (declare (ignorable args))
-  
-  (setf (cl-prevalence:get-root-object system :applied-logs)
-        (make-hash-table :test 'equal))
+
+  (unless (cl-prevalence:get-root-object system :applied-logs)
+    (log:info "Initializing applied logs list")
+    (setf (cl-prevalence:get-root-object system :applied-logs)
+          (make-hash-table :test 'equal)))
   
   (let ((dir (get-directory system)))
     (when (directory-empty-p dir)
       (let ((other-system-snapshot (search-other-system-snapshot (get-root-path system))))
         (when other-system-snapshot
+          (log:info "Cloning other master")
           (clone-other-master system other-system-snapshot))))))
 
 
