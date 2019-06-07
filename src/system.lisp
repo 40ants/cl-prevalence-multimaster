@@ -185,6 +185,13 @@
      ,@body))
 
 
+(defmethod cl-prevalence:restore ((system multimaster-system))
+  "We need to bind restored system to the *system* to make get-root-object work
+   in transactions from transaction-log.xml."
+  (with-system (system)
+    (call-next-method)))
+
+
 (defun get-root-object (name)
   (check-type name keyword)
   (cl-prevalence:get-root-object *system* name))
