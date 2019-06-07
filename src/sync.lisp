@@ -128,17 +128,34 @@
         (get-files-to-delete system)))
 
 
-(defun sync-with-other-masters (system &key (delete-old-logs t))
+(defun discover-other-masters (system)
+  "This function updates 'applied-logs slots by adding a key
+   for each name found in the root path.
+
+   We need this because a new master may didn't reported it's
+   state yet, but if it already created a directory, then
+   we should consider it's existence when deleting transaction logs."
+  (let* ((root (prevalence-multimaster/system:get-root-path system))
+         (hash (prevalence-multimaster/system:get-all-applied-logs :system system)))
+    (loop for path in (cl-fad:list-directory root)
+          for name = (pathname-name path)
+          when (cl-fad:directory-exists-p path)
+            do (setf (gethash name hash)
+                     (gethash name hash nil)))))
+
+
+(defun sync-with-other-masters (system &key
+                                         (delete-old-logs t)
+                                         (force nil))
   (funcall (cl-prevalence:get-guard system)
            (lambda ()
              (cond
-               ((> (get-num-transactions system)
-                   0)
-                (cl-prevalence:snapshot system)
-                (setf (get-num-transactions system)
-                      0))
+               ((or (> (get-num-transactions system)
+                       0)
+                    force)
+                (cl-prevalence:snapshot system))
                (t (log:info "Skipping snapshot because there wasn't any transactions between syncs.")))
-     
+
              (with-system (system)
                (loop for path in (discover-logs system)
                      do (unless (log-applied-p path)
@@ -146,7 +163,11 @@
                            (prevalence-multimaster/system:get-name system)
                            path)))
 
-       
+               ;; Где то тут надо сделать определение того, что появилась новая система
+               ;; которая может ожидать моих логов, и delete-old-logs
+               ;; должно её ждать
+               (discover-other-masters system)
+
                (when delete-old-logs
                  (delete-old-logs system))))))
 
@@ -207,6 +228,12 @@
     
     (with-open-file (out snapshot
 			 :direction :output :if-does-not-exist :create :if-exists :supersede)
-      (funcall (cl-prevalence::get-serializer system) (cl-prevalence::get-root-objects system) out (cl-prevalence::get-serialization-state system)))))
+      (funcall (cl-prevalence::get-serializer system)
+               (cl-prevalence::get-root-objects system)
+               out
+               (cl-prevalence::get-serialization-state system)))
+    (setf (get-num-transactions system)
+          0)
+    (values)))
 
 

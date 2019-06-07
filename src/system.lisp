@@ -66,11 +66,12 @@
                      (ensure-directory-pathname root-path)))
          (full-path (ensure-directory-pathname
                      (merge-pathnames* root-path
-                                       name))))
-    (make-instance class
-                   :directory full-path
-                   :root-path root-path
-                   :name name)))
+                                       name)))
+         (system (make-instance class
+                                :directory full-path
+                                :root-path root-path
+                                :name name)))
+    (values system)))
 
 
 (defgeneric get-log-suffix (system)
@@ -116,7 +117,7 @@
 
 
 (defun get-applied-logs (&key (system *system*))
-  (let ((hash (get-all-applied-logs system)))
+  (let ((hash (get-all-applied-logs :system system)))
     (gethash (get-name system) hash)))
 
 

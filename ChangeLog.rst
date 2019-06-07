@@ -2,6 +2,11 @@
  ChangeLog
 ===========
 
+0.3.0 (2019-06-08)
+==================
+
+* Now system is able to delete old logs which were read by other masters.
+
 0.2.0 (2019-06-02)
 ==================
 
