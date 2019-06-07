@@ -32,7 +32,8 @@
    #:is-transaction-log
    #:is-my-file
    #:get-root-path
-   #:get-all-applied-logs))
+   #:get-all-applied-logs
+   #:get-num-transactions))
 (in-package prevalence-multimaster/system)
 
 
@@ -49,7 +50,11 @@
    (name :type string
          :documentation "A system's name. It will be used to organize a folder inside of `root-path'."
          :initarg :name
-         :reader get-name)))
+         :reader get-name)
+   (num-transactions :type integer
+                     :documentation "A number of transaction after the last sync."
+                     :initform 0
+                     :accessor get-num-transactions)))
 
 
 (defun make-system (root-path name &key (class 'multimaster-system))

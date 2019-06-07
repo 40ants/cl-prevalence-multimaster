@@ -13,6 +13,7 @@
   (:import-from #:prevalence-multimaster/transaction
                 #:define-transaction)
   (:import-from #:prevalence-multimaster/system
+                #:get-num-transactions
                 #:get-log-suffix
                 #:is-my-file
                 #:is-transaction-log
@@ -128,24 +129,45 @@
 
 
 (defun sync-with-other-masters (system &key (delete-old-logs t))
-  (cl-prevalence:snapshot system)
-  
-  (with-system (system)
-    (loop for path in (discover-logs system)
-          do (unless (log-applied-p path)
-               (apply-other-master-log
-                (prevalence-multimaster/system:get-name system)
-                path)))
+  (funcall (cl-prevalence:get-guard system)
+           (lambda ()
+             (cond
+               ((> (get-num-transactions system)
+                   0)
+                (cl-prevalence:snapshot system)
+                (setf (get-num-transactions system)
+                      0))
+               (t (log:info "Skipping snapshot because there wasn't any transactions between syncs.")))
+     
+             (with-system (system)
+               (loop for path in (discover-logs system)
+                     do (unless (log-applied-p path)
+                          (apply-other-master-log
+                           (prevalence-multimaster/system:get-name system)
+                           path)))
 
-                 
-    (when delete-old-logs
-      (delete-old-logs system))))
+       
+               (when delete-old-logs
+                 (delete-old-logs system))))))
 
 
 (defun touch-file (path)
   "Creates an empty file."
   (uiop:with-output-file (stream path :if-does-not-exist :create)
     (declare (ignorable stream))))
+
+
+(defmethod cl-prevalence:execute ((system prevalence-multimaster/system:multimaster-system) transaction)
+  (prog1
+   (call-next-method)
+   
+   (unless (member
+            (cl-prevalence::get-function transaction)
+            (list 'tx-mark-log-as-applied
+                  'tx-apply-other-master-log))
+     (funcall (cl-prevalence:get-guard system)
+              #'(lambda ()
+                  (incf (get-num-transactions system)))))))
 
 
 (defmethod cl-prevalence:snapshot ((system prevalence-multimaster/system:multimaster-system))
