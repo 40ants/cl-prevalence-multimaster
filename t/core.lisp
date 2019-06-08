@@ -10,6 +10,8 @@
   (:import-from #:osicat
                 #:delete-directory-and-files)
   (:import-from #:prevalence-multimaster-test/utils
+                #:get-timestamps
+                #:add-timestamp
                 #:make-store
                 #:dump-state
                 #:matches
@@ -162,3 +164,24 @@
   (ok (equal (with-input-from-string (s "<PATHNAME>#P\"/tmp/foo/bar.txt\"</PATHNAME>")
                (s-serialization:deserialize-xml s))
              #P"/tmp/foo/bar.txt")))
+
+
+(deftest test-keep-same-time-in-replicated-transaction
+  (testing "When transaction is applied from log, get-universal-time should return same timestamp as when it was first issue on the original master"
+    (delete-directory-and-files "test-m2m" :if-does-not-exist :ignore)
+    (let ((store-a (make-store "a"))
+          (store-b (make-store "b")))
+
+      ;; Add some data to make a transaction logs in both stores
+      (add-timestamp store-a)
+      
+      ;; Generate snapshots and logs
+      (sync-with-other-masters store-a)
+      (sleep 2)
+      (sync-with-other-masters store-b)
+      
+      (testing "Checking if timestamps are equal"
+        (let ((first-timestamp (first (get-timestamps store-a)))
+              (second-timestamp (first (get-timestamps store-b))))
+          (ok (= first-timestamp
+                 second-timestamp)))))))

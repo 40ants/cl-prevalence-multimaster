@@ -25,7 +25,9 @@
    #:make-store
    #:test-multimaster
    #:get-transaction-id
-   #:get-transactions))
+   #:get-transactions
+   #:add-timestamp
+   #:get-timestamps))
 (in-package prevalence-multimaster-test/utils)
 
 
@@ -68,6 +70,7 @@
   (push text
         (prevalence-multimaster/system:get-root-object :lines)))
 
+
 (defun add-line (system text)
   "We need this helper to simplify switching between stores."
   (prevalence-multimaster/system:with-system (system)
@@ -76,6 +79,21 @@
 
 (defun get-lines (store)
   (cl-prevalence:get-root-object store :lines))
+
+
+(define-transaction %add-timestamp ()
+  (push (get-universal-time)
+        (prevalence-multimaster/system:get-root-object :timestamps)))
+
+
+(defun add-timestamp (system)
+  "We need this helper to simplify switching between stores."
+  (prevalence-multimaster/system:with-system (system)
+    (%add-timestamp)))
+
+
+(defun get-timestamps (store)
+  (cl-prevalence:get-root-object store :timestamps))
 
 
 (defun matches (regex)
