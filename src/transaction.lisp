@@ -15,6 +15,12 @@
 (in-package prevalence-multimaster/transaction)
 
 
+(defvar *in-transaction* nil
+  "This variable is used to prevent running one transaction inside of another.
+   Because doing this will make both transaction store in the transaction-log.xml
+   and this will cause problems later when the log will be replayed.")
+
+
 (defmacro define-transaction (name (&rest args) &body body)
   "Defines a function to execute transaction and a function to call it.
 
@@ -43,8 +49,14 @@ Also, a helper defined to call the transaction on hacrm/db::*system*."
        (defun ,name (,@args)
          (unless (boundp '*system*)
            (error "Use with-system macro around the code, to bind current *system* variable."))
-         (execute-transaction
-          (,(symbolicate "TX-" name)
-           *system*
-           (get-universal-time)
-           ,@args))))))
+         (when *in-transaction*
+           (error "You are running transaction ~S inside ~S. This can disrupt disrupt the space-time continuum. Please, dont to this!"
+                  ',name
+                  *in-transaction*))
+         
+         (let ((*in-transaction* ',name))
+           (execute-transaction
+            (,(symbolicate "TX-" name)
+             *system*
+             (get-universal-time)
+             ,@args)))))))

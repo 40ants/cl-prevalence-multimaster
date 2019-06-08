@@ -59,8 +59,12 @@
     ;; we just need to save this information into the applied-logs
     ((not (string-equal system-name
                         (prevalence-multimaster/system:get-name *system*)))
-     (log:info "Applying log" system-name path)
-     (mark-log-as-applied system-name path))
+     (let ((current-system (prevalence-multimaster/system:get-name *system*)))
+       (log:warn "Transaction about applying log but for other system"
+                 system-name
+                 path
+                 current-system))
+     (prevalence-multimaster/system:mark-log-as-applied system-name path))
     (t ;; Otherwise we are really applying log to the system
      (log:info "Applying log" system-name path)
      (when (and path
@@ -84,7 +88,9 @@
                    (if transaction
                        (cl-prevalence::execute-on transaction *system*)
                        (return)))))
-             (mark-log-as-applied system-name path)))))))
+             ;; Here we are just register applied log
+             ;; in a non transactional way
+             (prevalence-multimaster/system:mark-log-as-applied system-name path)))))))
   (values))
 
 
