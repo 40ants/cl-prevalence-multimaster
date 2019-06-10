@@ -1,6 +1,9 @@
 (defpackage #:prevalence-multimaster/sync
   (:use #:cl)
   (:import-from #:cl-fad
+                #:list-directory
+                #:directory-exists-p
+                #:pathname-as-file
                 #:pathname-parent-directory)
   (:import-from #:cl-prevalence
                 #:copy-file)
@@ -143,11 +146,11 @@
    we should consider it's existence when deleting transaction logs."
   (let* ((root (prevalence-multimaster/system:get-root-path system))
          (hash (prevalence-multimaster/system:get-all-applied-logs :system system)))
-    (loop for path in (cl-fad:list-directory root)
-          for name = (pathname-name path)
-          when (cl-fad:directory-exists-p path)
+    (loop for path in (list-directory root)
+          for name = (pathname-name (pathname-as-file path))
+          when (directory-exists-p path)
             do (setf (gethash name hash)
-                     (gethash name hash nil)))))
+                       (gethash name hash nil)))))
 
 
 (defun sync-with-other-masters (system &key
